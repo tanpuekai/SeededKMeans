@@ -6,7 +6,7 @@
 ##########################################################################
 
 His codes are too old to work in modern Java environment. And they contain
-to many errors.
+too many errors.
 
 I singled out the file "SeededKMeans.java", corrected for errors, 
 and compiled it, to make it a standalone version of his paper's algorithms.
