@@ -1,0 +1,26 @@
+##########################################################################
+#	Standalone version of Sugato Basu's well cited "semi-
+#	supervised learning with seeded clustering" method
+#		-- by Peikai Chen
+#			july 2015
+##########################################################################
+
+His codes are too old to work in modern Java environment. And they contain
+to many errors.
+
+I singled out the file "SeededKMeans.java", corrected for errors, 
+and compiled it, to make it a standalone version of his paper's algorithms.
+
+simply run these three steps:
+
+step 0: replace "../weka-latest/weka.jar" in compile.sh to where your weka.jar locates. 
+======	This file can be obtained from the weka page on sourceforge.
+
+step 1:  ./compile.sh
+======
+
+step 2:  ./execute.sh
+======
+
+
+
