@@ -600,7 +600,7 @@ public class SeededKMeans extends Clusterer implements OptionHandler, SemiSupClu
         initializeClusterer(); // Initializes cluster centroids (initial M-step)
         System.out.println("Done initializing clustering ...");
         getIndexClusters();
-        printIndexClusters();
+        //printIndexClusters();
         if (m_Verbose) {
             for (int i = 0; i < m_NumClusters; i++) {
                 System.out.println("Centroid " + i + ": " + m_ClusterCentroids.instance(i));
@@ -1862,28 +1862,35 @@ public class SeededKMeans extends Clusterer implements OptionHandler, SemiSupClu
         String[] cells;
         
         FileInputStream stream = new FileInputStream(new File(seedfile));
+	System.out.println("adding seeds:");
         try (Scanner scanner = new Scanner(stream)) {
             int i=0,num;
             while (scanner.hasNextLine()) {
                 tmp = scanner.nextLine();
                 cells = tmp.split("\\t");
-                num=Integer.parseInt(cells[0]);
+                num=Integer.parseInt(cells[0])-1;
                 arl.add(num);
+		System.out.print(", "+num);
+		if(i%10==0)
+			System.out.print("\n");
                 i++;
             }
         }
+	System.out.print("\n");
 
     }
-    public static String [] getfilesNames() throws FileNotFoundException {
-        FileInputStream stream;
-        stream = new FileInputStream(new File("inputs.txt"));
-        System.out.println("getting file names");
+    public static String [] getfilesNames(String[]  fnSpec) throws FileNotFoundException {
+/*        FileInputStream stream;
+        stream = new FileInputStream(new File(fnSpec));
+        System.out.println("getting file names from:"+fnSpec);
 
         Scanner scanner = new Scanner(stream);
         String tmp;
-        String[] cells, fileParam;
-        fileParam=new String[3];
-                
+        String[] cells, fileParam;*/
+
+        String[] fileParam=new String[3];
+	fileParam=fnSpec;
+/*                
         try {
             int i = 0;
             while (scanner.hasNextLine()) {
@@ -1896,10 +1903,10 @@ public class SeededKMeans extends Clusterer implements OptionHandler, SemiSupClu
         } finally {
             scanner.close();
         }
-
-        System.out.println("arff input file: " + fileParam[0]);
-        System.out.println("seed input file: " + fileParam[1]);
-        System.out.println("output file: " + fileParam[2]);
+*/
+        System.out.println("arff input file: " + fnSpec[0]);
+        System.out.println("seed input file: " + fnSpec[1]);
+        System.out.println("output file: " + fnSpec[2]);
         return(fileParam);
     }
 
@@ -1912,14 +1919,13 @@ public class SeededKMeans extends Clusterer implements OptionHandler, SemiSupClu
         try {
             arl = new ArrayList<Integer>();
 
-            String[] fnUser=getfilesNames();
+            String[] fnUser=getfilesNames(args);
             //String dataSet = new String("news");
-            String dataSet = "iris";
+//            String dataSet = "iris";
             System.out.println("Working Directory = "
                     + System.getProperty("user.dir"));
             if (3 > 2) {// (dataSet.equals("iris")) {
 
-                System.out.println("in iris");
                 //////// Iris data
                 String datafile = fnUser[0];
 
@@ -1931,45 +1937,60 @@ public class SeededKMeans extends Clusterer implements OptionHandler, SemiSupClu
                 int theClass = data.numAttributes();
                 data.setClassIndex(theClass - 1); // starts with 0
 
+
 	// Remove the class labels before clustering
                 Instances clusterData = new Instances(data);
                 clusterData.deleteClassAttribute();
+
+                System.out.println("\tinput data has "
+                        +data.numInstances()+" instances and "+data.numAttributes()+" attributes.");
+
+                System.out.println("\ttrain data has "
+                        +clusterData.numInstances()+" instances and "+clusterData.numAttributes()+" attributes.\n");
 
                 // #clusters = #classes
                 int num_clusters = data.numClasses();
                 Instances seeds = new Instances(data,0,0);
 
-                System.out.println("reading seeds ...");
+                System.out.println("\treading seeds ...\n\t");
                 readSeedIndices(fnUser[1]);
-               for(int i=0;i<arl.size();i++){
+               	for(int i=0;i<arl.size();i++){
                     System.out.print(arl.get(i)+", ");
                     seeds.add(data.instance(arl.get(i)));
                 };
 
-                System.out.println("\n\nnumber of seeded instances:" + seeds.numInstances() + "; and num of clusters:" + seeds.numClasses());
-                System.out.println("deleting seeds from training data:");
-               for(int i=0;i<arl.size();i++){
-                    System.out.print(arl.get(i)+", ");
-                    data.delete(arl.get(i));
-                };
+                System.out.println("\n\n\tnumber of seeded instances: " + seeds.numInstances() 
+			+"; with "+seeds.numAttributes() +" attributes"
+			+ "; and num of clusters: " + seeds.numClasses());
+                System.out.println("class attribute="+seeds.classAttribute());
 
-                System.out.println("\n\nClustering the iris data with seeding, using seeded KMeans...\nwith "
-                        +seeds.numInstances()+" seeds and "+data.numInstances()+" unlabled instances.\n");
+  		Instances unlabelData = new Instances(clusterData,0,0);
+                for(int i=0;i<clusterData.numInstances();i++){
+                    if (!arl.contains(i)){
+                        unlabelData.add(clusterData.instance(i));
+                    }else{
+                     //   System.out.println(i+" is in array.");
+                    }
+                }
+
+                System.out.println("\tnumber of unlabelled instances: "+unlabelData.numInstances()
+			+"; with"+unlabelData.numAttributes()+" attributes.");
                 
+		System.out.println("\n**************************");
                 System.out.println("step 0: getting prepared");
                 WeightedEuclidean euclidean = new WeightedEuclidean();
                 SeededKMeans kmeans = new SeededKMeans(euclidean);
                 //kmeans.resetClusterer();
                 kmeans.setVerbose(false);
-                kmeans.setSeedingMethod(new SelectedTag(SEEDING_SEEDED, TAGS_SEEDING));
+                kmeans.setSeedingMethod(new SelectedTag(SEEDING_CONSTRAINED, TAGS_SEEDING));	//SEEDING_SEEDED
                 kmeans.setAlgorithm(new SelectedTag(ALGORITHM_SIMPLE, TAGS_ALGORITHM));
                 euclidean.setExternal(false);
                 euclidean.setTrainable(false);
 
                 // phase 1 test
-                kmeans.setSeedable(false);
+                kmeans.setSeedable(true);
                 System.out.println("step 1: building clusters");
-                kmeans.buildClusterer(null, clusterData, theClass, data, 150);
+                kmeans.buildClusterer(seeds, unlabelData, theClass, data, 0);
                 System.out.println("step 2: finished clusters");
 
 	// phase 2 test
@@ -1979,220 +2000,11 @@ public class SeededKMeans extends Clusterer implements OptionHandler, SemiSupClu
                 
                 System.out.println("step 3: writing results clusters");
 
-                kmeans.writeClusterResults("cluster.res.txt");
+                kmeans.writeClusterResults(fnUser[2]);
         //        kmeans.printIndexClusters();
 	//	kmeans.setVerbose(true);
                 //kmeans.bestInstancesForActiveLearning(50);
-            } else if (dataSet.equals("news")) {
-                //////// Text data - 3000 documents
-                System.out.println("\nin newsgroup");
-                String datafile = "/u/ml/data/CCSfiles/arffFromCCS/cmu-newsgroup-clean-1000_fromCCS.arff";
-                System.out.println("\nClus tering complete newsgroup data with seeding, using constrained KMeans...\n");
-
-                // set up the data
-                FileReader reader = new FileReader(datafile);
-                Instances data = new Instances(reader);
-                System.out.println("Initial data has size: " + data.numInstances());
-
-                // Make the last attribute be the class 
-                int theClass = data.numAttributes();
-                data.setClassIndex(theClass - 1); // starts with 0
-                int num_clusters = data.numClasses();
-
-                // cluster with seeding      
-                Instances seeds = new Instances(data, 0);
-                /*
-                 seeds.add(data.instance(994));
-                 seeds.add(data.instance(1431));
-                 seeds.add(data.instance(1612));
-                 seeds.add(data.instance(1747));
-                 seeds.add(data.instance(2205));
-                 seeds.add(data.instance(2736));
-                 data.delete(2736);
-                 data.delete(2205);
-                 data.delete(1747);
-                 data.delete(1612);
-                 data.delete(1431);
-                 data.delete(994);
-
-                 seeds.add(data.instance(1000));
-                 seeds.add(data.instance(1001));
-                 seeds.add(data.instance(1002));
-                 seeds.add(data.instance(1003));
-                 seeds.add(data.instance(1004));
-                 seeds.add(data.instance(2000));
-                 seeds.add(data.instance(2001));
-                 seeds.add(data.instance(2002));
-                 seeds.add(data.instance(2003));
-                 seeds.add(data.instance(2004));
-
-                 //        System.out.println("Labeled data has size: " + seeds.numInstances() + ", number of attributes: " + data.numAttributes());
-
-                 data.delete(2004);
-                 data.delete(2003);
-                 data.delete(2002);
-                 data.delete(2001);
-                 data.delete(2000);
-                 data.delete(1004);
-                 data.delete(1003);
-                 data.delete(1002);
-                 data.delete(1001);
-                 data.delete(1000);
-                 data.delete(4);
-                 data.delete(3);
-                 data.delete(2);
-                 data.delete(1);
-                 data.delete(0);
-                 */
-                System.out.println("Unlabeled data has size: " + data.numInstances());
-
-	// Remove the class labels before clustering
-                Instances clusterData = new Instances(data);
-                clusterData.deleteClassAttribute();
-
-                WeightedDotP dotp = new WeightedDotP();
-                dotp.setExternal(false);
-                dotp.setTrainable(false);
-                dotp.setLengthNormalized(false);
-                SeededKMeans kmeans = new SeededKMeans(dotp);
-                kmeans.setVerbose(false);
-                kmeans.setSeedingMethod(new SelectedTag(SEEDING_SEEDED, TAGS_SEEDING));
-                kmeans.setAlgorithm(new SelectedTag(ALGORITHM_SPHERICAL, TAGS_ALGORITHM));
-                kmeans.setNumClusters(3);
-
-                // phase 1 test
-                kmeans.setSeedable(false);
-                kmeans.buildClusterer(null, clusterData, theClass, data, data.numInstances());
-
-	// phase 2 test
-                //kmeans.setSeedable(true);
-                //kmeans.buildClusterer(seeds, clusterData, theClass, data, 3000);
-                kmeans.getIndexClusters();
-                kmeans.printIndexClusters();
-	//	kmeans.setVerbose(true);
-                //kmeans.bestInstancesForActiveLearning(50);
-
-//  	// cluster with seeding for small newsgroup
-//  	seeds = new Instances(data, 0, 3);
-//  	seeds.add(data.instance(100)); 
-//  	seeds.add(data.instance(101));
-//  	seeds.add(data.instance(102));
-//  	seeds.add(data.instance(200));
-//  	seeds.add(data.instance(201));
-//  	seeds.add(data.instance(202));
-//  	seeds.add(data.instance(300));
-//  	seeds.add(data.instance(301));
-//  	seeds.add(data.instance(302));
-//  	seeds.add(data.instance(400));
-//  	seeds.add(data.instance(401));
-//  	seeds.add(data.instance(402));
-//  	seeds.add(data.instance(500));
-//  	seeds.add(data.instance(501));
-//  	seeds.add(data.instance(502));
-//  	seeds.add(data.instance(600));
-//  	seeds.add(data.instance(601));
-//  	seeds.add(data.instance(602));
-//  	seeds.add(data.instance(700));
-//  	seeds.add(data.instance(701));
-//  	seeds.add(data.instance(702));
-//  	seeds.add(data.instance(800));
-//  	seeds.add(data.instance(801));
-//  	seeds.add(data.instance(802));
-//  	seeds.add(data.instance(900));
-//  	seeds.add(data.instance(901));      
-//  	seeds.add(data.instance(902));
-//  	seeds.add(data.instance(1000)); 
-//  	seeds.add(data.instance(1001));
-//  	seeds.add(data.instance(1002));
-//  	seeds.add(data.instance(1100)); 
-//  	seeds.add(data.instance(1101));
-//  	seeds.add(data.instance(1102));
-//  	seeds.add(data.instance(1200));
-//  	seeds.add(data.instance(1201));
-//  	seeds.add(data.instance(1202));
-//  	seeds.add(data.instance(1300));
-//  	seeds.add(data.instance(1301));
-//  	seeds.add(data.instance(1302));
-//  	seeds.add(data.instance(1400));
-//  	seeds.add(data.instance(1401));
-//  	seeds.add(data.instance(1402));
-//  	seeds.add(data.instance(1500));
-//  	seeds.add(data.instance(1501));
-//  	seeds.add(data.instance(1502));
-//  	seeds.add(data.instance(1600));
-//  	seeds.add(data.instance(1601));
-//  	seeds.add(data.instance(1602));
-//  	seeds.add(data.instance(1700));
-//  	seeds.add(data.instance(1701));
-//  	seeds.add(data.instance(1702));
-//  	seeds.add(data.instance(1800));
-//  	seeds.add(data.instance(1801));
-//  	seeds.add(data.instance(1802));
-//  	seeds.add(data.instance(1900));
-//  	seeds.add(data.instance(1901));
-//  	seeds.add(data.instance(1902));
-//  	System.out.println("Labeled data has size: " + seeds.numInstances() + ", number of attributes: " + data.numAttributes());
-//  	data.delete(1902);
-//  	data.delete(1901);
-//  	data.delete(1900);
-//  	data.delete(1802);
-//  	data.delete(1801);
-//  	data.delete(1800);
-//  	data.delete(1702);
-//  	data.delete(1701);
-//  	data.delete(1700);
-//  	data.delete(1602);
-//  	data.delete(1601);
-//  	data.delete(1600);
-//  	data.delete(1502);
-//  	data.delete(1501);
-//  	data.delete(1500);
-//  	data.delete(1402);
-//  	data.delete(1401);
-//  	data.delete(1400);
-//  	data.delete(1302);
-//  	data.delete(1301);
-//  	data.delete(1300);
-//  	data.delete(1202);
-//  	data.delete(1201);
-//  	data.delete(1200);
-//  	data.delete(1102);
-//  	data.delete(1101);
-//  	data.delete(1100);
-//  	data.delete(1002);
-//  	data.delete(1001);
-//  	data.delete(1000);
-//  	data.delete(902);
-//  	data.delete(901);
-//  	data.delete(900);
-//  	data.delete(802);
-//  	data.delete(801);
-//  	data.delete(800);
-//  	data.delete(702);
-//  	data.delete(701);
-//  	data.delete(700);
-//  	data.delete(602);
-//  	data.delete(601);
-//  	data.delete(600);
-//  	data.delete(502);
-//  	data.delete(501);
-//  	data.delete(500);
-//  	data.delete(402);
-//  	data.delete(401);
-//  	data.delete(400);
-//  	data.delete(302);
-//  	data.delete(301);
-//  	data.delete(300);
-//  	data.delete(202);
-//  	data.delete(201);
-//  	data.delete(200);
-//  	data.delete(102);
-//  	data.delete(101);
-//  	data.delete(100);
-//  	data.delete(2);
-//  	data.delete(1);
-//  	data.delete(0);
-            }
+            } 
         } catch (Exception e) {
             e.printStackTrace();
         }
